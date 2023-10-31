@@ -1,6 +1,7 @@
 #include <windows.h>
 #include "BuggyHouse.h"
 
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPSTR lpCmdLine,
@@ -17,9 +18,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance,
 
         myFramework.Release();
 
+
         return ret;
     }
-
     catch (const com_exception& e)
     {
         OutputDebugStringA(e.what());

@@ -1,6 +1,6 @@
-#include "BitmapManager.h"
+Ôªø#include "BitmapManager.h"
 
-#pragma comment(lib, "WindwosCodecs.lib")
+#pragma comment(lib, "WindowsCodecs.lib")
 
 using namespace std;
 using namespace Microsoft::WRL;
@@ -11,18 +11,12 @@ HRESULT BitmapManager::LoadWICBitmap(wstring filename, ID2D1Bitmap** ppBitmap)
     HRESULT hr;
 
     auto pWICFactory = mspWICFactory.Get();
-    if (mpFramework == nullptr)
-    {
-        return E_FAIL;
-    }
-
-    auto pWICFactory = mpFramework->GetWICFactory();
     if (pWICFactory == nullptr)
     {
         return E_FAIL;
     }
 
-    hr = pWICFactory->CreateDecoderFromFilename(filename, nullptr, GENERIC_READ,
+    hr = pWICFactory->CreateDecoderFromFilename(filename.c_str(), nullptr, GENERIC_READ,
         WICDecodeMetadataCacheOnLoad, decoder.GetAddressOf());
     ThrowIfFailed(hr);
 
@@ -37,13 +31,14 @@ HRESULT BitmapManager::LoadWICBitmap(wstring filename, ID2D1Bitmap** ppBitmap)
 
     ThrowIfFailed(hr);
 
-    auto pRT = mpFramework->GetRenderTarget();
+    auto pRT = mpRenderTarget;
+
     if (pRT == nullptr)
     {
         return E_FAIL;
     }
 
-    hr = pRT->CreateBitmapFromWicBitmap(converter.Get(), mspBitmap.GetAddressOf());
+    hr = pRT->CreateBitmapFromWicBitmap(converter.Get(), ppBitmap);
     ThrowIfFailed(hr);
 
     return S_OK;
@@ -51,36 +46,45 @@ HRESULT BitmapManager::LoadWICBitmap(wstring filename, ID2D1Bitmap** ppBitmap)
 
 HRESULT BitmapManager::Initialize(ID2D1HwndRenderTarget* pRT)
 {
-	if (!pRT)
-	{
-		return E_FAIL;
-	}
-	
-	mpRenderTarget = pRT;
+    if (!pRT)
+    {
+        return E_FAIL;
+    }
 
-	HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
-		IID_PPV_ARGS(mspWICFactory.GetAddressOf()));
-	ThrowIfFailed(hr, "WICFactory Creation failed");
+    mpRenderTarget = pRT;
 
-	return hr;
+    HRESULT hr = ::CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(mspWICFactory.GetAddressOf()));
+
+    ThrowIfFailed(hr, "WICFactory Creation failed");
+
+    return hr;
 }
 
 void BitmapManager::Release()
 {
-	mBitmapResources
+    mBitmapResources.clear();
+
+    mspWICFactory.Reset();
 }
 
-ID2D1Bitmap* BitmapManager::LoadBitmap(std::wstring filename)
+ID2D1Bitmap* BitmapManager::LoadBitmap(wstring filename)
 {
-	// √≥¿Ω ∫“∑∂≥ƒ?
-    // ¿ÃπÃ ∑Œµ˘«ﬂ≥ƒ?
     if (!mspWICFactory)
     {
         ThrowIfFailed(E_FAIL, "WICFactory must not null");
         return nullptr;
     }
 
+    auto result = mBitmapResources.insert({ filename, nullptr }); // insert√Ä√á ¬π√ù√à¬Ø¬∞¬™=pair(¬≥√ñ√Ä¬∫ √Ä¬ß√Ñ¬°, bool)
+
+    if (result.second == true)
+    {
+        auto spBitmap = ComPtr<ID2D1Bitmap>();
+        LoadWICBitmap(filename, spBitmap.GetAddressOf());
+        result.first->second = spBitmap;
+    }
 
 
-    return nullptr;
+    return result.first->second.Get();
 }
